@@ -1,11 +1,9 @@
 import pandas as pd
 
 class SupportResistanceTradingBot():
-    def __init__(self, timestamp, close, CP_list: list, wallet: float):
+    def __init__(self, CP_list: list, wallet: float):
         self.CP_list = sorted(CP_list)
         self.wallet = wallet
-        self.timestamp = timestamp
-        self.close = close
         self.position_status = None
         self.entry_price = None # Indicates the entry price of the positions.
         self.previous_price = None
