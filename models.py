@@ -5,12 +5,12 @@ class SupportResistanceTradingBot():
         self.CP_list = sorted(CP_list)
         self.wallet = wallet
         self.position_status = None
-        self.entry_price = None # Indicates the entry price of the positions.
         self.previous_price = None
         self.current_price = None # Follows the current price to set entry prices when needed.
         self.quantity = 0
         self.transaction_log = []
         self.current_time = None
+        self.position_entry_CP = None
 
     def create_buy_and_sell_cps(self, x):
         self.buy_cps = [i * (100 + x)/100 for i in self.CP_list]
@@ -32,17 +32,17 @@ class SupportResistanceTradingBot():
         # This function removes a support or resistance level.
         self.CP_list.remove(value)
 
-    def get_sup_and_res_lines(self, x): # NEW
+    def get_sup_and_res_lines(self, x, price): # NEW
         # This function checks price and finds the closest support and resistance level.
         temp_buy_list, temp_sell_list = self.create_buy_and_sell_cps(x)
 
-        temp_buy_list = temp_buy_list + [self.current_price]
+        temp_buy_list = temp_buy_list + [price]
         temp_buy_list.sort()
-        ind_buy = temp_buy_list.index(self.current_price)
+        ind_buy = temp_buy_list.index(price)
 
-        temp_sell_list = temp_sell_list + [self.current_price]
+        temp_sell_list = temp_sell_list + [price]
         temp_sell_list.sort()
-        ind_sell = temp_sell_list.index(self.current_price)
+        ind_sell = temp_sell_list.index(price)
         #print(ind_buy, ind_sell)
 
         if ind_buy != 0 or ind_sell != 0 or ind_buy != len(temp_sell_list) - 1 or ind_sell != len(temp_sell_list) - 1:
@@ -50,9 +50,10 @@ class SupportResistanceTradingBot():
         else:
             raise IndexError("Make sure that the current price is between supports and resistances!")
         
-    def log_transaction(self, transaction_type, position_type, price, quantity, time): # NEW
+    def log_transaction(self, index, transaction_type, position_type, price, quantity, time): # NEW
         # This function logs necessary information whenever there is a new transaction
         transaction = {
+            'index': index,
             'type': transaction_type,
             'position_type': position_type,
             'price': price,
@@ -62,69 +63,88 @@ class SupportResistanceTradingBot():
         }
         self.transaction_log.append(transaction)
 
-    def open_long_pos(self, sup_blw): # NEW
-        if (
-            (self.position_status is None) and 
-            (self.wallet > 0) and \
-            (self.previous_price >= sup_blw) and 
-            (self.current_price <= sup_blw)
-            ) or (
-            (self.position_status is None) and 
-            (self.wallet > 0) and 
-            (self.previous_price <= sup_blw) and 
-            (self.current_price >= sup_blw)):
-            # Buying logic
-            self.position_status = "long"
-            self.entry_price = self.current_price
-            # Apply changes in the portfolio
-            self.quantity = self.wallet / self.current_price  # Calculate quantity
-            self.wallet = self.wallet - (self.current_price * self.quantity) # Calculate new balance
-            self.log_transaction("buy", self.position_status, self.current_price, self.quantity, self.current_time)
-
-    def close_long_pos(self, res_blw): # NEW
-        if (
-            (self.position_status == "long") and 
-            (self.previous_price <= res_blw) and 
-            (self.current_price >= res_blw)
-            ):
-            self.wallet += self.quantity * self.current_price
-            self.log_transaction("sell", self.position_status, self.current_price, self.quantity, self.current_time)
-            self.position_status = None
-            self.entry_price = None
-            self.quantity = 0
-
-    def open_short_pos(self, res_above): # NEW
-        # Implement short selling logic and log the transaction
-        if (
-            (self.position_status is None) and 
-            (self.wallet > 0) and 
-            (self.previous_price <= res_above) and 
-            (self.current_price >= res_above)
-            ) or (
-            (self.position_status is None) and
-            (self.wallet > 0) and 
-            (self.previous_price >= res_above) and 
-            (self.current_price <= res_above)
-            ):
-            # Buying logic
-            self.position_status = "short"
-            self.entry_price = self.current_price
-            # Apply changes in the portfolio
-            self.quantity = -1 * self.wallet / self.current_price  # Calculate quantity
-            self.wallet = self.wallet - (self.current_price * self.quantity) # Calculate new balance
-            self.log_transaction("sell", self.position_status, self.current_price, self.quantity, self.current_time)
-
-    def close_short_pos(self, sup_above): # NEW
-        # Implement closing short position logic and log the transaction
+    def determine_action(self, pre_lst, cur_lst):
         if (
             (self.position_status == "short") and 
-            (self.previous_price <= sup_above) and 
-            (self.current_price >= sup_above)
+            (self.position_entry_CP > self.current_price) and
+            (self.current_price <= pre_lst[0]) # pre_sup_blw
+        ) or (
+            (self.position_status == "short") and
+            (self.position_entry_CP < self.current_price) and
+            (self.current_price >= pre_lst[1]) # pre_sup_abv
             ):
-            self.wallet += -1 * self.quantity * self.current_price
-            self.log_transaction("buy", self.position_status, self.current_price, self.quantity, self.current_time)
-            self.position_status = None
-            self.entry_price = None
-            self.quantity = 0
+            return "open long"
+        
+        elif (
+            (self.position_status == "long") and
+            (self.position_entry_CP > self.current_price) and
+            (self.current_price <= pre_lst[2]) # pre_res_blw
+        ) or (
+            (self.position_status == "long") and 
+            (self.position_entry_CP < self.current_price) and
+            (self.current_price >= pre_lst[3]) # pre_res_abv
+            ):
+            return "open short"
+        
+        elif (
+            (self.position_status == None) and
+            (self.previous_price > pre_lst[0]) and # pre_sup_blw
+            (self.current_price <= cur_lst[1]) # cur_sup_abv
+        ) or (
+            (self.position_status == None) and
+            (self.previous_price < pre_lst[1]) and # pre_sup_abv
+            (self.current_price >= cur_lst[0]) # cur_sup_blw
+            ):
+            return "open long"
+        
+        elif (
+            (self.position_status == None) and
+            (self.previous_price > pre_lst[2]) and # pre_res_blw
+            (self.current_price <= cur_lst[3]) # cur_res_abv
+        ) or (
+            (self.position_status == None) and
+            (self.previous_price < pre_lst[3]) and # pre_res_blw
+            (self.current_price >= cur_lst[2]) # cur_res_abv
+        ):
+            return "open short"
+        
+        else:
+            return None
+        
+    def open_long_pos(self, index): # NEW
+        # Buying logic
+        self.position_status = "long"
+        self.position_entry_CP = self.current_price
+        # Apply changes in the portfolio
+        self.quantity = self.wallet / self.current_price  # Calculate quantity
+        self.wallet = self.wallet - (self.current_price * self.quantity) # Calculate new balance
+        self.log_transaction(index, "buy", self.position_status, self.current_price, self.quantity, self.current_time)
+
+    def close_long_pos(self, index): # NEW
+        self.wallet += self.quantity * self.current_price
+        if self.position_status is not None:
+            self.log_transaction(index, "sell", self.position_status, self.current_price, self.quantity, self.current_time)
+        self.entry_price = None
+        self.quantity = 0
+        self.position_entry_CP = None
+
+    def open_short_pos(self, index): # NEW
+        # Implement short selling logic and log the transaction
+        # Buying logic
+        self.position_status = "short"
+        self.position_entry_CP = self.current_price
+        # Apply changes in the portfolio
+        self.quantity = -1 * self.wallet / self.current_price  # Calculate quantity
+        self.wallet = self.wallet - (self.current_price * self.quantity) # Calculate new balance
+        self.log_transaction(index, "sell", self.position_status, self.current_price, self.quantity, self.current_time)
+
+    def close_short_pos(self, index): # NEW
+        # Implement closing short position logic and log the transaction
+        self.wallet += -1 * self.quantity * self.current_price
+        if self.position_status is not None:
+            self.log_transaction(index, "buy", self.position_status, self.current_price, self.quantity, self.current_time)
+        self.entry_price = None
+        self.quantity = 0
+        self.position_entry_CP = None
 
 

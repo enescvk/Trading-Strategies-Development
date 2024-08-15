@@ -13,7 +13,7 @@ print(dictlist[1]['timestamp'])
 # 391. timestamp'te 10209.81'den longluyor.. 
 # 1696. index'te 10677.77'den long kapatıyor.
 # 1699. da 10658.29'den shortluyor.
-# 47525'de satıyor. Hemen shortlama ve short kapama algolarını düzelt.
+# 47525'de satıyor. 4442'de satması gerekirdi. Hemen shortlama ve short kapama algolarını düzelt.
 
 
 #Buy Lines: [7031.5, 7585.0, 8569.0, 9122.5, 10198.75, 11213.5, 12607.5]
