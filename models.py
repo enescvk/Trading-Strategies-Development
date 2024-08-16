@@ -89,29 +89,33 @@ class SupportResistanceTradingBot():
         elif (
             (self.position_status == None) and
             (self.previous_price > pre_lst[0]) and # pre_sup_blw
-            (self.current_price <= cur_lst[1]) # cur_sup_abv
+            (self.current_price <= cur_lst[1]) and # cur_sup_abv
+            (pre_lst[0] == cur_lst[1])
         ) or (
             (self.position_status == None) and
             (self.previous_price < pre_lst[1]) and # pre_sup_abv
-            (self.current_price >= cur_lst[0]) # cur_sup_blw
+            (self.current_price >= cur_lst[0]) and # cur_sup_blw
+            (pre_lst[1] == cur_lst[0])
             ):
             return "open long"
         
         elif (
             (self.position_status == None) and
             (self.previous_price > pre_lst[2]) and # pre_res_blw
-            (self.current_price <= cur_lst[3]) # cur_res_abv
+            (self.current_price <= cur_lst[3]) and # cur_res_abv
+            (pre_lst[2] == cur_lst[3])
         ) or (
             (self.position_status == None) and
             (self.previous_price < pre_lst[3]) and # pre_res_blw
-            (self.current_price >= cur_lst[2]) # cur_res_abv
+            (self.current_price >= cur_lst[2]) and # cur_res_abv
+            (pre_lst[3] == cur_lst[2])
         ):
             return "open short"
         
         else:
             return None
         
-    def open_long_pos(self, index): # NEW
+    def open_long_pos(self, index):
         # Buying logic
         self.position_status = "long"
         self.position_entry_CP = self.current_price
@@ -120,15 +124,15 @@ class SupportResistanceTradingBot():
         self.wallet = self.wallet - (self.current_price * self.quantity) # Calculate new balance
         self.log_transaction(index, "buy", self.position_status, self.current_price, self.quantity, self.current_time)
 
-    def close_long_pos(self, index): # NEW
-        self.wallet += self.quantity * self.current_price
+    def close_long_pos(self, index): 
         if self.position_status is not None:
+            self.wallet += self.quantity * self.current_price
             self.log_transaction(index, "sell", self.position_status, self.current_price, self.quantity, self.current_time)
-        self.entry_price = None
-        self.quantity = 0
-        self.position_entry_CP = None
+            self.entry_price = None
+            self.quantity = 0
+            self.position_entry_CP = None
 
-    def open_short_pos(self, index): # NEW
+    def open_short_pos(self, index):
         # Implement short selling logic and log the transaction
         # Buying logic
         self.position_status = "short"
@@ -138,13 +142,13 @@ class SupportResistanceTradingBot():
         self.wallet = self.wallet - (self.current_price * self.quantity) # Calculate new balance
         self.log_transaction(index, "sell", self.position_status, self.current_price, self.quantity, self.current_time)
 
-    def close_short_pos(self, index): # NEW
+    def close_short_pos(self, index):
         # Implement closing short position logic and log the transaction
-        self.wallet += -1 * self.quantity * self.current_price
         if self.position_status is not None:
+            self.wallet += -1 * self.quantity * self.current_price
             self.log_transaction(index, "buy", self.position_status, self.current_price, self.quantity, self.current_time)
-        self.entry_price = None
-        self.quantity = 0
-        self.position_entry_CP = None
+            self.entry_price = None
+            self.quantity = 0
+            self.position_entry_CP = None
 
 
