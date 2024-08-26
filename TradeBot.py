@@ -8,7 +8,7 @@ df = pd.read_csv("sample.txt", sep = "\t")
 df['Timestamp'] = pd.to_datetime(df['Open time'], unit = 'ms')
 data = df[['Timestamp', 'Close']]
 CPs = [6860, 7400, 8360, 8900, 9950, 10940, 12300]
-margin = 0.4
+margin = 0.499
 
 first_model = m.SupportResistanceTradingBot(CPs, 1000)
 buy_lines, sell_lines = first_model.create_buy_and_sell_cps(margin)

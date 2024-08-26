@@ -167,7 +167,7 @@ class performance_evaluator():
         self.last_balance = balances[-1]
         self.min_balance = min(balances)
         self.max_balance = max(balances)
-        self.trade_amount = len(timestamps)
+        self.trade_amount = len(np.unique(timestamps))
         self.avg_balance = np.average(balances)
         self.min_time_diff = min(time_diffs_without_zeros)
         self.max_time_diff = max(time_diffs_without_zeros)
