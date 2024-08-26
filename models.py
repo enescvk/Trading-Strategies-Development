@@ -1,4 +1,6 @@
 import pandas as pd
+import numpy as np
+from datetime import datetime
 
 class SupportResistanceTradingBot():
     def __init__(self, CP_list: list, wallet: float):
@@ -23,12 +25,12 @@ class SupportResistanceTradingBot():
         self.previous_price = price_prev
         self.current_time = time_cur
 
-    def add_cl(self, value: float):
+    def add_cp(self, value: float):
         # This function adds another support or resistance level.
         self.CP_list.append(value)
         self.CP_list.sort()
 
-    def remove_cl(self, value):
+    def remove_cp(self, value):
         # This function removes a support or resistance level.
         self.CP_list.remove(value)
 
@@ -50,16 +52,16 @@ class SupportResistanceTradingBot():
         else:
             raise IndexError("Make sure that the current price is between supports and resistances!")
         
-    def log_transaction(self, index, transaction_type, position_type, price, quantity, time): # NEW
+    def log_transaction(self, index, transaction_type):
         # This function logs necessary information whenever there is a new transaction
         transaction = {
             'index': index,
             'type': transaction_type,
-            'position_type': position_type,
-            'price': price,
-            'quantity': quantity,
+            'position_type': self.position_status,
+            'price': self.current_price,
+            'quantity': self.quantity,
             'wallet_balance': self.wallet,
-            'timestamp': time
+            'timestamp': self.current_time
         }
         self.transaction_log.append(transaction)
 
@@ -121,16 +123,17 @@ class SupportResistanceTradingBot():
         self.position_entry_CP = self.current_price
         # Apply changes in the portfolio
         self.quantity = self.wallet / self.current_price  # Calculate quantity
-        self.wallet = self.wallet - (self.current_price * self.quantity) # Calculate new balance
-        self.log_transaction(index, "buy", self.position_status, self.current_price, self.quantity, self.current_time)
+        self.wallet = 0 # Calculate new balance
+        self.log_transaction(index, "buy")
 
     def close_long_pos(self, index): 
         if self.position_status is not None:
-            self.wallet += self.quantity * self.current_price
-            self.log_transaction(index, "sell", self.position_status, self.current_price, self.quantity, self.current_time)
+            self.wallet = self.quantity * self.current_price
             self.entry_price = None
             self.quantity = 0
             self.position_entry_CP = None
+            self.log_transaction(index, "sell")
+
 
     def open_short_pos(self, index):
         # Implement short selling logic and log the transaction
@@ -140,15 +143,45 @@ class SupportResistanceTradingBot():
         # Apply changes in the portfolio
         self.quantity = -1 * self.wallet / self.current_price  # Calculate quantity
         self.wallet = self.wallet - (self.current_price * self.quantity) # Calculate new balance
-        self.log_transaction(index, "sell", self.position_status, self.current_price, self.quantity, self.current_time)
+        self.log_transaction(index, "sell")
 
     def close_short_pos(self, index):
         # Implement closing short position logic and log the transaction
         if self.position_status is not None:
-            self.wallet += -1 * self.quantity * self.current_price
-            self.log_transaction(index, "buy", self.position_status, self.current_price, self.quantity, self.current_time)
+            self.wallet = self.wallet + (self.quantity * self.current_price)
             self.entry_price = None
             self.quantity = 0
             self.position_entry_CP = None
+            self.log_transaction(index, "buy")
 
+class performance_evaluator():
+    def __init__(self, transaction_history: list):
+        self.transaction_history = transaction_history
+
+    def overall_performance(self):
+        balances = [tr["wallet_balance"] + tr['quantity'] * tr["price"] for tr in self.transaction_history]
+        timestamps = [tr["timestamp"] for tr in self.transaction_history]
+        time_differences = [(timestamps[i+1] - timestamps[i]).total_seconds() / 3600 for i in range(len(timestamps) - 1)]
+        time_diffs_without_zeros = [num for num in time_differences if num != 0]
+
+        self.last_balance = balances[-1]
+        self.min_balance = min(balances)
+        self.max_balance = max(balances)
+        self.trade_amount = len(timestamps)
+        self.avg_balance = np.average(balances)
+        self.min_time_diff = min(time_diffs_without_zeros)
+        self.max_time_diff = max(time_diffs_without_zeros)
+        self.avg_time_diff = np.average(time_diffs_without_zeros)
+        
+
+        return {
+                "last_balance": self.last_balance, 
+                "min_balance": self.min_balance, 
+                "max_balance": self.max_balance,
+                "trade_amount": self.trade_amount,
+                "avg_balance": self.avg_balance,
+                "min_time_diff": self.min_time_diff,
+                "max_time_diff": self.max_time_diff,
+                "avg_time_diff": self.avg_time_diff
+                }
 

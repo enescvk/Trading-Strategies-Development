@@ -8,14 +8,14 @@ df = pd.read_csv("sample.txt", sep = "\t")
 df['Timestamp'] = pd.to_datetime(df['Open time'], unit = 'ms')
 data = df[['Timestamp', 'Close']]
 CPs = [6860, 7400, 8360, 8900, 9950, 10940, 12300]
-margin = 2.5
+margin = 0.4
 
 first_model = m.SupportResistanceTradingBot(CPs, 1000)
 buy_lines, sell_lines = first_model.create_buy_and_sell_cps(margin)
 print(f"Buy Lines: {buy_lines}\nSell Lines: {sell_lines}")
 
 for index, row in data.iterrows():
-    if index != 0 and index <= 50000:
+    if index != 0:
         previous_close = data.loc[index - 1, 'Close']
         first_model.update_prices_and_time(row['Close'], previous_close, row['Timestamp'])
         cur_pr_lines = list(first_model.get_sup_and_res_lines(margin, first_model.current_price))
@@ -33,4 +33,7 @@ for index, row in data.iterrows():
 
 logs = first_model.transaction_log
 
-print(logs)
+performance = m.performance_evaluator(logs)
+result_dict = performance.overall_performance()
+print(result_dict)
+
