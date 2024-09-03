@@ -23,7 +23,7 @@ This project implements and tests various trading strategies using Python. The s
    ```bash
    pip install -r requirements.txt
 
-## Usage
+## Usage
 TBA
 
 ## Features
