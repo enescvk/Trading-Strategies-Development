@@ -35,7 +35,7 @@ TBA
 TBA
 
 ## Acknowledgments
-- Inspired by *Teknik Analiz Mi Dedin? Hadi Canım Sen de* by *Ali Perşembe*.
+- Inspired by the book "*Teknik Analiz Mi Dedin? Hadi Canım Sen de*" by *Ali Perşembe*.
 
 
 
