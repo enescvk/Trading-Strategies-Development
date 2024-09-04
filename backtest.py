@@ -3,6 +3,9 @@ import pandas as pd
 import models as m
 import datetime
 import sys
+import scraping as sc
+
+"""
 
 df = pd.read_csv("sample.txt", sep = "\t")
 df['Timestamp'] = pd.to_datetime(df['Open time'], unit = 'ms')
@@ -39,5 +42,7 @@ logs = first_model.transaction_log
 performance = m.performance_evaluator(logs)
 result_dict = performance.overall_performance()
 print(result_dict)
+"""
 
-
+news = sc.get_last_10_news()
+print(news)
