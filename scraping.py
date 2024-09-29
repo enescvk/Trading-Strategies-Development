@@ -1,8 +1,10 @@
-from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
+from urllib.request import urlopen
 from bs4 import BeautifulSoup
 import io
 import gzip
+import requests
+from urllib.request import urlopen
+from urllib.error import HTTPError, URLError
 
 def get_last_10_news_headlines():
     string = ""
@@ -40,76 +42,66 @@ def get_last_10_news_headlines():
     return string
 
 
+###########################################################################
+
+
 def get_last_10_links():
     url_list = []
-    # This code is going to scrape some necessary information from Yahoo Finance.
+    base_url = "https://finance.yahoo.com"
     url = "https://finance.yahoo.com/topic/stock-market-news/"
-    response = urlopen(url)
 
-    # Check if the content is compressed with gzip
-    if response.info().get('Content-Encoding') == 'gzip':
-        # If gzip encoded, decompress the data
-        buf = io.BytesIO(response.read())
-        f = gzip.GzipFile(fileobj=buf)
-        html = f.read().decode('utf-8')
-    else:
-        # Otherwise, read normally and decode
-        html = response.read().decode('utf-8')
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise exception if not a 200 status
+        html = response.text
 
-    soup = BeautifulSoup(html, "html.parser")
+        # Parse the HTML using BeautifulSoup
+        soup = BeautifulSoup(html, "html.parser")
 
-    # Now you can print or process the soup object
-    #print(soup.prettify())
+        # Find all <h3> elements with class 'Mb(5px)' (news titles)
+        h3_elements = soup.find_all('h3', class_='Mb(5px)')
 
-    # Find all <h3> elements
-    h3_elements = soup.find_all('h3', class_ = "Mb(5px)")
+        # Extract and construct full URLs
+        for h3 in h3_elements:
+            a_element = h3.find('a')
+            if a_element:
+                href = a_element.get('href')
+                full_url = href if href.startswith('http') else base_url + href
+                url_list.append(full_url)
 
-    # Loop through each <h3> element
-    for h3 in h3_elements:
-        # Find the first <a> element within the <h3>
-        a_element = h3.find('a')  # Use find() to get the first <a> tag, not find_all()
-        
-        # Check if an <a> element was found
-        if a_element:
-            # Extract the href attribute
-            href = a_element.get('href')
-            
-            # Append the href to the url_list
-            url_list.append(href)
+        return url_list[:10]
 
-    # Now url_list contains all the extracted URLs
+    except requests.exceptions.RequestException as e:
+        print(f"Error occurred: {e}")
+        return []
+    
 
-    return url_list
+###########################################################################
 
 def get_last_10_new_content(url_lst):
     url_dict = {}
     for url in url_lst:
-        response = urlopen(url)
+        # Initialize Safari WebDriver
+        driver = webdriver.Safari()
+        driver.get(url)
 
-        # Check if the content is compressed with gzip
-        if response.info().get('Content-Encoding') == 'gzip':
-            buf = io.BytesIO(response.read())
-            f = gzip.GzipFile(fileobj=buf)
-            html = f.read().decode('utf-8')
-        else:
-            html = response.read().decode('utf-8')
+        # Optional: Wait for elements to load, adjust the time based on page loading speed
+        driver.implicitly_wait(5)  # Wait for 5 seconds for elements to load
 
-        soup = BeautifulSoup(html, "html.parser")
+        # Find all <div> elements with the class "body yf-5ef8bf"
+        div_elements = driver.find_elements(By.CSS_SELECTOR, 'div.body.yf-5ef8bf')
 
-        # Find the <div> element with the class "caas-body"
-        div_elements = soup.find('div', class_="caas-body")
-        
-        if div_elements:
-            # Find all <p> elements within the <div>
-            p_elements = div_elements.find_all('p')
+        # Iterate over each <div> element found
+        for div in div_elements:
+            # Inside each <div>, find all <p> elements with the class "yf-1pe5jgt"
+            p_elements = div.find_elements(By.CSS_SELECTOR, 'p.yf-1pe5jgt')
             
             # Extract text from each <p> element and concatenate into a single string
-            ps_text = " ".join([p.get_text() for p in p_elements])
-            
-            # Store the extracted text in the url_dict
-            url_dict[url] = ps_text
+            ps_text = " ".join([p.text for p in p_elements])
 
-        else:
-            print(f"No content found for {url}")
+        # Close the browser once done
+        driver.quit()
+
+        url_dict[url] = ps_text
 
     return url_dict
